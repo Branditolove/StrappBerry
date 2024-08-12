@@ -1,55 +1,99 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:myapp/providers/cart_provider.dart';
+import 'package:provider/provider.dart';
 
 class CartPage extends StatelessWidget {
-  const CartPage({super.key});
+  const CartPage({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     final cartProvider = Provider.of<CartProvider>(context);
     final cartItems = cartProvider.cartItems;
 
+    double total = cartItems.fold(0, (sum, item) => sum + (item.price * item.quantity));
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Carrito'),
+        title: const Text('Mi carrito'),
+        centerTitle: true,
       ),
-      body: cartItems.isEmpty
-          ? const Center(child: Text('El carrito está vacío'))
-          : ListView.builder(
+      body: Column(
+        children: [
+          Expanded(
+            child: ListView.builder(
               itemCount: cartItems.length,
               itemBuilder: (context, index) {
-                final product = cartItems[index];
-                return ListTile(
-                  leading: product.imageUrl.isNotEmpty
-                      ? Image.file(File(product.imageUrl))
-                      : const Placeholder(), // Muestra un placeholder si la URL está vacía
-                  title: Text(product.name),
-                  subtitle: Text('\$${product.price}'),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.remove_shopping_cart),
-                    onPressed: () {
-                      cartProvider.removeProduct(product);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content:
-                              Text('${product.name} eliminado del carrito'),
+                final item = cartItems[index];
+                return Container(
+                  margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[200],
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    children: [
+                      Image.asset(
+                        item.imageUrl,
+                        width: 60,
+                        height: 60,
+                        fit: BoxFit.cover,
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(item.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                            Text('\$${item.price}'),
+                          ],
                         ),
-                      );
-                    },
+                      ),
+                      Row(
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.remove),
+                            onPressed: () => cartProvider.decreaseQuantity(item),
+                          ),
+                          Text('${item.quantity}'),
+                          IconButton(
+                            icon: const Icon(Icons.add),
+                            onPressed: () => cartProvider.increaseQuantity(item),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 );
               },
             ),
-      bottomNavigationBar: Padding(
-        padding: const EdgeInsets.all(16),
-        child: ElevatedButton(
-          onPressed: () {
-            // Lógica para proceder con la compra
-          },
-          child: const Text('Proceder a la compra'),
-        ),
+          ),
+          Container(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('Total', style: TextStyle(fontWeight: FontWeight.bold)),
+                    Text('\$${total.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue[800],
+                    minimumSize: const Size(double.infinity, 50),
+                  ),
+                  onPressed: () {
+                    // Implementar acción de compra
+                  },
+                  child: const Text('Comprar ahora'),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

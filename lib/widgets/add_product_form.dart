@@ -42,7 +42,7 @@ class _AddProductFormState extends State<AddProductForm> {
         name: _nameController.text,
         price: double.tryParse(_priceController.text) ?? 0.0,
         imageUrl: _imageFile?.path ?? '',
-        descripcion: _descriptionController.text, category: '',
+        descripcion: _descriptionController.text, category: '', quantity: 1,
       );
 
       productList.add(newProduct.toJson());

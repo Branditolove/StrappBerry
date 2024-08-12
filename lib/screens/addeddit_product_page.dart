@@ -55,6 +55,7 @@ class _AddEditProductPageState extends State<AddEditProductPage> {
         imageUrl: _imagePath,
         descripcion: _descriptionController.text,
         category: _selectedCategory,
+        quantity: 1
       );
       Navigator.of(context).pop(product);
     }

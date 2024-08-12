@@ -56,7 +56,7 @@ class _EditProductFormState extends State<EditProductForm> {
         name: _nameController.text,
         price: double.tryParse(_priceController.text) ?? 0.0,
         imageUrl: _imageFile?.path ?? widget.product.imageUrl,
-        descripcion: _descriptionController.text, category: '',
+        descripcion: _descriptionController.text, category: '', quantity: 1,
       );
 
       final index = productList.indexWhere((item) => item['id'] == widget.product.id);
