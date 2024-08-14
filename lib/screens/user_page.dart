@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:myapp/screens/cart_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:provider/provider.dart';
 import 'package:myapp/providers/cart_provider.dart';
@@ -9,7 +11,6 @@ class UserPage extends StatefulWidget {
   const UserPage({super.key});
 
   @override
-  // ignore: library_private_types_in_public_api
   _UserPageState createState() => _UserPageState();
 }
 
@@ -24,47 +25,48 @@ class _UserPageState extends State<UserPage> {
     super.initState();
     _loadUsername();
     _loadProducts();
-    _loadFavorites();
   }
 
   Future<void> _loadProducts() async {
-    // Implementa la carga de productos desde SharedPreferences o una API
-    // Por ahora, usaremos datos de ejemplo
+    final prefs = await SharedPreferences.getInstance();
+    final productsJson = prefs.getString('products') ?? '[]';
+    final List<dynamic> productList = jsonDecode(productsJson);
+
+    // Productos predefinidos
+    final predefinedProducts = [
+      Product(
+        id: '1',
+        name: 'Laptop',
+        price: 999.99,
+        imageUrl: 'assets/laptop.png',
+        descripcion: 'Potente laptop para trabajo y juegos',
+        category: 'Laptops',
+        quantity: 1,
+      ),
+      Product(
+        id: '2',
+        name: 'Smartphone',
+        price: 699.99,
+        imageUrl: 'assets/smartpone.png',
+        descripcion: 'Smartphone de última generación',
+        category: 'Celulares',
+        quantity: 1,
+      ),
+      Product(
+        id: '3',
+        name: 'Tablet',
+        price: 299.99,
+        imageUrl: 'assets/tablet.png',
+        descripcion: 'Tablet versátil para entretenimiento y productividad',
+        category: 'Tablets',
+        quantity: 1,
+      ),
+    ];
+
     setState(() {
       _products = [
-        Product(
-            id: '1',
-            name: 'MAC',
-            price: 300,
-            imageUrl: 'assets/product1.png',
-            descripcion: 'MAC PRO',
-            category: '',
-            quantity: 1),
-        Product(
-            id: '2',
-            name: 'PS5',
-            price: 500,
-            imageUrl: 'assets/product2.png',
-            descripcion: 'Consola PS5',
-            category: '',
-            quantity: 1),
-      ];
-    });
-  }
-
-  Future<void> _loadFavorites() async {
-    // Implementa la carga de favoritos desde SharedPreferences o una API
-    // Por ahora, usaremos datos de ejemplo
-    setState(() {
-      _favorites = [
-        Product(
-            id: '1',
-            name: 'Producto 1',
-            price: 100,
-            imageUrl: 'assets/product1.png',
-            descripcion: '',
-            category: '',
-            quantity: 1),
+        ...predefinedProducts,
+        ...productList.map((json) => Product.fromJson(json)).toList(),
       ];
     });
   }
@@ -76,16 +78,17 @@ class _UserPageState extends State<UserPage> {
     });
   }
 
-  void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-      if (index == 0) {
-        _loadProducts();
-      } else if (index == 1) {
-        _loadFavorites();
-      }
-    });
-  }
+ void _onItemTapped(int index) {
+  setState(() {
+    _selectedIndex = index;
+    if (index == 1) {
+      final cartProvider = Provider.of<CartProvider>(context, listen: false);
+      setState(() {
+        _favorites = cartProvider.favoriteProducts.values.toList();
+      });
+    }
+  });
+}
 
   @override
   Widget build(BuildContext context) {
@@ -111,7 +114,10 @@ class _UserPageState extends State<UserPage> {
             child: IconButton(
               icon: const Icon(Icons.shopping_cart),
               onPressed: () {
-                Navigator.pushNamed(context, '/cart');
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const CartPage()),
+                );
               },
             ),
           ),
@@ -164,6 +170,9 @@ class ProductCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cartProvider = Provider.of<CartProvider>(context);
+    final isFavorite = cartProvider.isFavorite(product);
+
     return Card(
       margin: const EdgeInsets.all(8),
       child: ListTile(
@@ -177,12 +186,34 @@ class ProductCard extends StatelessWidget {
         ),
         title: Text(product.name),
         subtitle: Text('\$${product.price}'),
-        trailing: IconButton(
-          icon: const Icon(Icons.add_shopping_cart),
-          onPressed: () {
-            Provider.of<CartProvider>(context, listen: false)
-                .addProduct(product);
-          },
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              icon: Icon(
+                Icons.shopping_cart,
+                color: cartProvider.cartItems.containsKey(product.id)
+                    ? Colors.blue
+                    : Colors.grey,
+              ),
+              onPressed: () {
+                if (cartProvider.cartItems.containsKey(product.id)) {
+                  cartProvider.removeProduct(product);
+                } else {
+                  cartProvider.addProduct(product);
+                }
+              },
+            ),
+            IconButton(
+              icon: Icon(
+                Icons.favorite,
+                color: isFavorite ? Colors.red : Colors.grey,
+              ),
+              onPressed: () {
+                cartProvider.toggleFavorite(product);
+              },
+            ),
+          ],
         ),
       ),
     );
@@ -220,10 +251,8 @@ class AccountPage extends StatelessWidget {
           Text('Bienvenido, $username'),
           ElevatedButton(
             onPressed: () async {
-              // Implementa la lógica para cerrar sesión
               final prefs = await SharedPreferences.getInstance();
               await prefs.remove('username');
-              // ignore: use_build_context_synchronously
               Navigator.pushReplacementNamed(context, '/login');
             },
             child: const Text('Cerrar Sesión'),

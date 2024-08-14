@@ -1,8 +1,6 @@
-// ignore_for_file: library_private_types_in_public_api
-
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:myapp/screens/addeddit_product_page.dart';
+import 'package:myapp/widgets/add_product_form.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:myapp/models/product_model.dart';
 
@@ -26,6 +24,43 @@ class _AdminPageState extends State<AdminPage> {
     final prefs = await SharedPreferences.getInstance();
     final productsJson = prefs.getString('products') ?? '[]';
     final List<dynamic> productList = jsonDecode(productsJson);
+
+    if (productList.isEmpty) {
+      // Agregar productos predefinidos si la lista está vacía
+      productList.addAll([
+        Product(
+          id: '1',
+          name: 'Laptop',
+          price: 999.99,
+          imageUrl: 'assets/images/laptop.jpg', // Ruta del asset local
+          descripcion: 'Potente laptop para trabajo y juegos',
+          category: 'Laptops',
+          quantity: 1,
+        ).toJson(),
+        Product(
+          id: '2',
+          name: 'Smartphone',
+          price: 699.99,
+          imageUrl: 'assets/images/smartphone.jpg', // Ruta del asset local
+          descripcion: 'Smartphone de última generación',
+          category: 'Celulares',
+          quantity: 1,
+        ).toJson(),
+        Product(
+          id: '3',
+          name: 'Tablet',
+          price: 299.99,
+          imageUrl: 'assets/images/tablet.jpg', // Ruta del asset local
+          descripcion: 'Tablet versátil para entretenimiento y productividad',
+          category: 'Tablets',
+          quantity: 1,
+        ).toJson(),
+      ]);
+
+      // Guardar los productos predefinidos
+      await prefs.setString('products', jsonEncode(productList));
+    }
+
     setState(() {
       _products = productList.map((item) => Product.fromJson(item)).toList();
     });
@@ -44,33 +79,23 @@ class _AdminPageState extends State<AdminPage> {
     await prefs.setString('products', productsJson);
   }
 
-  void _addOrEditProduct({Product? product}) async {
-    final result = await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => AddEditProductPage(product: product),
+  void _openAddProductForm({Product? product}) async {
+    await showDialog(
+      context: context,
+      builder: (context) => const Dialog(
+        child: AddProductForm(), // Usamos el formulario que hemos editado
       ),
     );
 
-    if (result != null) {
-      setState(() {
-        if (product == null) {
-          _products.add(result);
-        } else {
-          final index = _products.indexWhere((p) => p.id == result.id);
-          if (index != -1) {
-            _products[index] = result;
-          }
-        }
-      });
-      await _saveProducts();
-    }
+    // Recargar productos después de agregar o editar
+    _loadProducts();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Productos'),
+        title: const Text('Administrar Productos'),
         backgroundColor: Colors.blueGrey[700],
       ),
       body: GridView.builder(
@@ -89,7 +114,7 @@ class _AdminPageState extends State<AdminPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(
-                  child: Image.network(
+                  child: Image.asset(
                     product.imageUrl,
                     fit: BoxFit.cover,
                     errorBuilder: (context, error, stackTrace) =>
@@ -110,8 +135,7 @@ class _AdminPageState extends State<AdminPage> {
                         children: [
                           IconButton(
                             icon: const Icon(Icons.edit),
-                            onPressed: () =>
-                                _addOrEditProduct(product: product),
+                            onPressed: () => _openAddProductForm(product: product),
                           ),
                           IconButton(
                             icon: const Icon(Icons.delete),
@@ -128,7 +152,7 @@ class _AdminPageState extends State<AdminPage> {
         },
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => _addOrEditProduct(),
+        onPressed: () => _openAddProductForm(),
         backgroundColor: Colors.blueGrey[700],
         child: const Icon(Icons.add),
       ),

@@ -1,11 +1,11 @@
-// ignore_for_file: library_private_types_in_public_api, use_build_context_synchronously
-
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:myapp/models/product_model.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as path;
 
 class AddProductForm extends StatefulWidget {
   const AddProductForm({super.key});
@@ -19,14 +19,18 @@ class _AddProductFormState extends State<AddProductForm> {
   final _nameController = TextEditingController();
   final _priceController = TextEditingController();
   final _descriptionController = TextEditingController();
-  File? _imageFile;
+  String? _imageAssetPath;
 
-  Future<void> _pickImage() async {
+  Future<void> _pickImage(ImageSource source) async {
     final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+    final pickedFile = await picker.pickImage(source: source);
     if (pickedFile != null) {
+      final appDir = await getApplicationDocumentsDirectory();
+      final fileName = path.basename(pickedFile.path);
+      final savedImage =
+          await File(pickedFile.path).copy('${appDir.path}/$fileName');
       setState(() {
-        _imageFile = File(pickedFile.path);
+        _imageAssetPath = savedImage.path;
       });
     }
   }
@@ -41,23 +45,27 @@ class _AddProductFormState extends State<AddProductForm> {
         id: DateTime.now().toString(),
         name: _nameController.text,
         price: double.tryParse(_priceController.text) ?? 0.0,
-        imageUrl: _imageFile?.path ?? '',
-        descripcion: _descriptionController.text, category: '', quantity: 1,
+        imageUrl: _imageAssetPath ?? '',
+        descripcion: _descriptionController.text,
+        category: '',
+        quantity: 1,
       );
 
       productList.add(newProduct.toJson());
       await prefs.setString('products', jsonEncode(productList));
 
-      // Clear the form
+      // Limpiar el formulario
       _nameController.clear();
       _priceController.clear();
       _descriptionController.clear();
       setState(() {
-        _imageFile = null;
+        _imageAssetPath = null;
       });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('${newProduct.name} agregado con éxito')),
       );
+
+      Navigator.pop(context); // Regresar a la página anterior
     }
   }
 
@@ -66,61 +74,97 @@ class _AddProductFormState extends State<AddProductForm> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Agregar Producto'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.check),
-            onPressed: _addProduct,
-          ),
-        ],
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Form(
           key: _formKey,
-          child: Column(
-            children: [
-              _imageFile == null
-                  ? const Text('No image selected.')
-                  : Image.file(_imageFile!),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  ElevatedButton(
-                    onPressed: _pickImage,
-                    child: const Text('Seleccionar Imagen'),
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                TextFormField(
+                  controller: _nameController,
+                  decoration: const InputDecoration(
+                    labelText: 'Nombre',
+                    border: OutlineInputBorder(),
                   ),
-                ],
-              ),
-              TextFormField(
-                controller: _nameController,
-                decoration: const InputDecoration(labelText: 'Nombre'),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Por favor, ingrese el nombre del producto';
-                  }
-                  return null;
-                },
-              ),
-              TextFormField(
-                controller: _priceController,
-                decoration: const InputDecoration(labelText: 'Precio'),
-                keyboardType: TextInputType.number,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Por favor, ingrese el precio del producto';
-                  }
-                  if (double.tryParse(value) == null) {
-                    return 'Por favor, ingrese un número válido';
-                  }
-                  return null;
-                },
-              ),
-              TextFormField(
-                controller: _descriptionController,
-                decoration: const InputDecoration(labelText: 'Descripción'),
-                maxLines: 3,
-              ),
-            ],
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Por favor ingrese el nombre';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16.0),
+                TextFormField(
+                  controller: _priceController,
+                  decoration: const InputDecoration(
+                    labelText: 'Precio',
+                    border: OutlineInputBorder(),
+                  ),
+                  keyboardType: TextInputType.number,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Por favor ingrese el precio';
+                    }
+                    if (double.tryParse(value) == null ||
+                        double.parse(value) <= 0) {
+                      return 'Ingrese un precio válido mayor a 0';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16.0),
+                TextFormField(
+                  controller: _descriptionController,
+                  decoration: const InputDecoration(
+                    labelText: 'Descripción',
+                    border: OutlineInputBorder(),
+                  ),
+                  maxLines: 3,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Por favor ingrese una descripción';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16.0),
+                if (_imageAssetPath != null)
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Image.file(
+                        File(_imageAssetPath!),
+                        height: 150,
+                        fit: BoxFit.cover,
+                      ),
+                      const SizedBox(height: 8.0),
+                    ],
+                  ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    ElevatedButton(
+                      onPressed: () => _pickImage(ImageSource.camera),
+                      child: const Text('Tomar Foto'),
+                    ),
+                    ElevatedButton(
+                      onPressed: () => _pickImage(ImageSource.gallery),
+                      child: const Text('Subir de Galería'),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24.0),
+                Center(
+                  child: ElevatedButton(
+                    onPressed: _addProduct,
+                    child: const Text('Agregar Producto'),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

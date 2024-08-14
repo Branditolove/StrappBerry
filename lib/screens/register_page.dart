@@ -133,6 +133,9 @@ class RegisterPage extends StatelessWidget {
                               users.add('$rolePrefix$name|$email|$password');
                               await prefs.setStringList('users', users);
 
+                              // Guardar el nombre del usuario
+                              await prefs.setString('username', name);
+
                               // ignore: use_build_context_synchronously
                               Navigator.pushNamed(context, '/login');
                             }

@@ -1,3 +1,4 @@
+
 class Product {
   final String id;
   final String name;
@@ -5,26 +6,27 @@ class Product {
   final String imageUrl;
   final String descripcion;
   final String category;
-  int quantity;
+  late final int quantity;
 
-  Product(
-      {required this.id,
-      required this.name,
-      required this.price,
-      required this.imageUrl,
-      required this.descripcion,
-      required this.category,
-      required this.quantity});
+  Product({
+    required this.id,
+    required this.name,
+    required this.price,
+    required this.imageUrl,
+    required this.descripcion,
+    required this.category,
+    required this.quantity,
+  });
 
   factory Product.fromJson(Map<String, dynamic> json) {
     return Product(
       id: json['id'],
       name: json['name'],
-      price: json['price'] is num ? json['price'].toDouble() : 0.0,
+      price: json['price'].toDouble(),
       imageUrl: json['imageUrl'],
       descripcion: json['descripcion'],
       category: json['category'],
-      quantity: 1,
+      quantity: json['quantity'],
     );
   }
 
@@ -36,6 +38,7 @@ class Product {
       'imageUrl': imageUrl,
       'descripcion': descripcion,
       'category': category,
+      'quantity': quantity,
     };
   }
 }
